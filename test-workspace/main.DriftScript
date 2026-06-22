@@ -1,0 +1,976 @@
+gx_include("Common.DriftScript")
+
+local g_highestLevel = 10
+local g_level = 0
+local g_tagsPerPlayer = {}
+local g_currentStep = 0
+
+function modulo(a, b)
+{
+    return a % b
+}
+
+function get_players()
+{
+    return gx_get_players()
+}
+
+function get_player_name(playerID)
+{
+    return gx_get_player_prop(PlayerProp.ColoredPlayerName2, playerID)
+}
+
+function update_decals()
+{
+    local tick = gx_get_sim_tick()
+    local rotation = tick * 0.2
+
+    local decalIDs = gx_decal_get_all_by_tag("Monster")
+    foreach (decalID in decalIDs)
+    {
+        gx_decal_modify(decalID, {
+            m_rotation = rotation
+        })
+    }
+}
+
+function set_image(level)
+{
+    local bSpace = (g_level == g_highestLevel)
+    common_set_bg_image(level, bSpace)
+}
+
+function create_units_array(locs, unitType)
+{
+    foreach (loc in locs)
+    {
+        local unitID = gx_create_unit({ m_unitType = unitType, m_location = loc, m_playerID = SpecialPlayer.Neutral })
+        gx_set_unit_prop(UnitProp.ForceInvulnerable, unitID, true)
+    }
+}
+
+function explode_array(locs, color = null)
+{
+    foreach (loc in locs)
+    {
+        explode(loc, color)
+    }
+}
+
+function kill_and_throw(unit_id, toThrowDir = null)
+{
+    local params = {}
+    if (toThrowDir != null)
+    {
+        params["m_dir2d"] <- toThrowDir
+    }
+
+    gx_fling_unit(unit_id, params)
+    gx_kill_unit(unit_id)
+}
+
+function explode(loc, color = null)
+{
+    local explosionParams = { m_location = loc } #, m_soundPack = "User_Boom" }
+    if (color != null)
+    {
+        explosionParams["m_color"] <- color
+    }
+    gx_create_explosion(explosionParams)
+    local unit_ids = gx_get_units( { m_locations = [ loc ] })
+    local loc2d = gx_get_location_prop(LocationProp.Center, loc)
+    foreach (unit_id in unit_ids)
+    {
+        local unit2d = gx_get_unit_position(unit_id).xy()
+        local toThrowDir = unit2d - loc2d
+        kill_and_throw(unit_id, toThrowDir)
+    }
+}
+
+function blow_up(loc)
+{
+    explode(loc)
+    local topLeft = gx_get_location_prop(LocationProp.TopLeft, loc)
+    local terrainType = gx_get_terrain_type(topLeft, 0)
+    if (terrainType.m_x == TerrainType.Normal)
+    {
+        gx_set_terrain_type( { m_location = loc, m_type=TerrainType.Space } )
+    }
+    else
+    {
+         gx_set_terrain_type( { m_location = loc, m_type=TerrainType.Normal } )
+    }
+}
+
+function reset_zone_normal()
+{
+     gx_set_terrain_type( { m_location = "Zone", m_type = TerrainType.Normal } )
+}
+
+function reset_zone_space()
+{
+     gx_set_terrain_type( { m_location = "Zone", m_type = TerrainType.Space } )
+}
+
+function make_space(loc)
+{
+    gx_set_terrain_type( { m_location = loc, m_type=TerrainType.Space } )
+}
+
+function make_space_cell(index)
+{
+    gx_set_terrain_type( { m_index = index, m_type=TerrainType.Space } )
+}
+
+function make_normal_cell(index)
+{
+    gx_set_terrain_type( { m_index = index, m_type=TerrainType.Normal } )
+}
+
+function make_normal_array(locs)
+{
+    foreach (loc in locs)
+    {
+        gx_set_terrain_type( { m_location = loc, m_type=TerrainType.Normal } )
+    }
+}
+
+function make_normal(loc)
+{
+    gx_set_terrain_type( { m_location = loc, m_type=TerrainType.Normal } )
+}
+
+function get_bounding_units()
+{
+    return gx_get_units({ m_unitTypes = ["Bounder", "Brute"] })
+}
+
+function get_unit_type_for_player(playerID)
+{
+    if (g_tagsPerPlayer[playerID] == 2) {
+        return "Brute"
+    } else {
+        return "Bounder"
+    }
+}
+function blow_up_row(row, theTick)
+{
+    if (theTick % 9 != 0)
+    {
+      return
+    }
+    theTick = theTick / 9
+    local col = theTick % 10
+    if (row % 2 == 0)
+    {
+        col = 9-col
+    }
+    local theLoc = row + "_" + col
+    blow_up(theLoc)
+}
+
+function do_obstacle_2(step)
+{
+    local bottomLeft = gx_get_location_prop(LocationProp.BottomLeft, "Zone")
+    local topRight = gx_get_location_prop(LocationProp.TopRight, "Zone")
+
+    # setup
+    if (step == 0)
+    {
+        reset_zone_space()
+        local topLeftRegion = Vec2(bottomLeft.m_x, bottomLeft.m_y + 4)
+        local bottomRightRegion = Vec2(topRight.m_x, bottomLeft.m_y)
+        for (local y = topLeftRegion.m_y; y != bottomRightRegion.m_y; --y)
+        {
+            for (local x = topLeftRegion.m_x; x != bottomRightRegion.m_x; ++x)
+            {
+                gx_set_terrain_type( { m_index = Vec2(x, y), m_type = TerrainType.Normal } )
+            }
+        }
+    }
+
+    if (step % 2 == 1)
+    {
+        return
+    }
+
+    local rowToMakeSpace = modulo((step / 2) - 1, 40)
+    local rowToMakeNormal = modulo(rowToMakeSpace + 4, 40)
+
+    for (local x=bottomLeft.m_x; x<topRight.m_x; ++x)
+    {
+        gx_set_terrain_type( { m_index = Vec2(x, bottomLeft.m_y + rowToMakeSpace + 1), m_type = TerrainType.Space } )
+        gx_set_terrain_type( { m_index = Vec2(x, bottomLeft.m_y + rowToMakeNormal + 1), m_type = TerrainType.Normal } )
+    }
+}
+
+function do_obstacle_6(step)
+{
+    if (step == 0)
+    {
+        reset_zone_space()
+
+        make_normal_array([ "9_6", "9_7", "9_8" ])
+        make_normal_array([ "8_6", "8_7", "8_8" ])
+        make_normal_array([ "7_2", "7_3", "7_4", "7_5", "7_6", "7_7", "7_8" ])
+        make_normal_array([ "6_2", "6_3", "6_4", "6_5", "6_6", "6_7", "6_8" ])
+        make_normal_array([ "5_2", "5_3", "5_4", "5_5", "5_6", "5_7", "5_8" ])
+        make_normal_array([ "4_2", "4_3", "4_4", "4_5", "4_6", "4_7", "4_8" ])
+        make_normal_array([ "3_2", "3_3", "3_4", "3_5", "3_6", "3_7", "3_8" ])
+        make_normal_array([ "2_6", "2_7", "2_8" ])
+        make_normal_array([ "1_6", "1_7", "1_8"])
+        make_normal_array([ "0_6", "0_7", "0_8" ])
+
+        create_units_array(["9_6", "9_8"], "SolarDome")
+        create_units_array(["8_6", "8_8"], "SolarDome")
+        create_units_array(["7_2", "7_3", "7_4", "7_5", "7_6", "7_8"], "SolarDome")
+        create_units_array(["6_2", "6_8"], "SolarDome")
+        create_units_array(["5_2", "5_4", "5_5", "5_6", "5_7", "5_8"], "SolarDome")
+        create_units_array(["4_2", "4_8"], "SolarDome")
+        create_units_array(["3_2", "3_3", "3_4", "3_5", "3_6", "3_8"], "SolarDome")
+        create_units_array(["2_6", "2_8"], "SolarDome")
+        create_units_array(["1_6", "1_8"], "SolarDome")
+        create_units_array(["0_6", "0_8"], "SolarDome")
+    }
+
+    # xxx, xxx, xxx, xxx, yyy, 9_7, yyy
+    # xxx, xxx, xxx, xxx, yyy, 8_7, yyy
+    # yyy, yyy, yyy, yyy, yyy, 7_7, yyy
+    # yyy, 6_3, 6_4, 6_5, 6_6, 6_7, yyy
+    # yyy, 5_3, yyy, yyy, yyy, yyy, yyy
+    # yyy, 4_3, 4_4, 4_5, 4_6, 4_7, yyy
+    # yyy, yyy, yyy, yyy, yyy, 3_7, yyy
+    # xxx, xxx, xxx, xxx, yyy, 2_7, yyy
+    # xxx, xxx, xxx, xxx, yyy, 1_7, yyy
+    # xxx, xxx, xxx, xxx, yyy, 0_7, yyy
+
+    local localStep = step % 25
+
+    if (localStep == 0)
+    {
+        explode_array([ "3_7", "4_7", "4_5", "4_3", "5_3", "6_3", "6_5", "6_7", "7_7"], Vec3(1, 1, 0))
+    }
+
+    if (localStep == 10)
+    {
+        explode_array([ "4_4", "4_6", "6_4", "6_6"], Vec3(0, 1, 1))
+    }
+}
+
+
+
+class ob9_decal_info
+{
+    m_decal_id = null;
+    m_pos = null
+    m_vel = null
+    m_rotation = null
+    m_hue = null
+
+    constructor() 
+    {
+        local topLeft = gx_get_location_prop(LocationProp.Center, "9_0")
+        m_vel = gx_rand_unit_vec2() * 0.5
+        m_pos = (topLeft + Vec2(rand() % 37, -(rand() % 37))).ToFloat()
+        m_decal_id = gx_decal_create( { m_preset = "User_Death", m_pos = m_pos } )
+        m_rotation = modulo(rand().tofloat(), TAU)
+        m_hue = (rand() % 360).tofloat()
+    }
+
+    function Update()
+    {
+        {
+            local myAABR = AABR(m_pos - Vec2(2, 2), m_pos + Vec2(2, 2))
+            local unit_ids = gx_get_units( { m_aabrs = [ myAABR ] } )
+            foreach (unit_id in unit_ids)
+            {
+                kill_and_throw(unit_id)
+            }
+        }
+
+        local aabrZone = gx_get_location_prop(LocationProp.AABR, "Zone")
+        aabrZone.m_min += Vec2(2, 2)
+        aabrZone.m_max -= Vec2(2, 2)
+
+        if (m_pos.m_y > aabrZone.m_max.m_y)
+        {
+            m_vel.m_y = -abs(m_vel.m_y)
+        }
+        if (m_pos.m_y < aabrZone.m_min.m_y)
+        {
+            m_vel.m_y = abs(m_vel.m_y)
+        }
+        if (m_pos.m_x < aabrZone.m_min.m_x)
+        {
+            m_vel.m_x = abs(m_vel.m_x)
+        }
+        if (m_pos.m_x > aabrZone.m_max.m_x)
+        {
+            m_vel.m_x = -abs(m_vel.m_x)
+        }
+
+        m_hue += 10
+        m_pos += m_vel
+        m_rotation += 0.3
+
+        local colorSRGBA = gx_color_hsla_to_srgba(Vec4(m_hue, 100, 50, 1).ToFloat())
+
+        gx_decal_modify(m_decal_id, { m_pos = m_pos, m_rotation = m_rotation, m_color = colorSRGBA} )
+    }
+
+    function Destroy()
+    {
+        gx_decal_destroy(m_decal_id)
+    }
+}
+
+local ob9_decal_infos = []
+
+function clear_obstacle_9()
+{
+    foreach (item in ob9_decal_infos)
+    {
+        item.Destroy()
+    }
+    ob9_decal_infos = []
+}
+
+function do_obstacle_9(step)
+{
+    if (step == 0)
+    {
+        for (local i=0; i<20; ++i)
+        {
+            ob9_decal_infos.append(ob9_decal_info())
+        }
+    }
+
+    foreach (item in ob9_decal_infos)
+    {
+        item.Update()
+    }
+}
+
+function do_obstacle_8(step)
+{
+    if (step % 10 != 0)
+    {
+        return
+    }
+    step = (step / 10) % 10
+
+    # if (step < 10)
+    {
+        for (local i=0; i<10; ++i)
+        {
+            explode((9-step)+"_"+i)
+        }
+    }
+}
+
+function set_row_7(yIn, xIn, cols)
+{
+    # clear the row
+    for (local i=0; i<10; ++i)
+    {
+        make_space(yIn+"_"+i)
+    }
+
+    local leftMostLocation = yIn+"_0"
+    local topLeftPos = gx_get_location_prop(LocationProp.TopLeft, leftMostLocation)
+    local bottomRightPos = gx_get_location_prop(LocationProp.BottomLeft, leftMostLocation)
+
+    topLeftPos.m_x += xIn;
+    bottomRightPos.m_x += xIn + cols
+
+    for (local y=topLeftPos.m_y; y!=bottomRightPos.m_y; --y)
+    {
+        for (local x=topLeftPos.m_x; x != bottomRightPos.m_x; ++x)
+        {
+            make_normal_cell(Vec2(x, y))
+        }
+    }
+}
+
+function update_7(evenStep, oddStep)
+{
+    set_row_7(0, evenStep, 8)
+    set_row_7(1, evenStep, 8)
+    set_row_7(2, oddStep, 8)
+    set_row_7(3, oddStep, 8)
+    set_row_7(4, evenStep, 8)
+    set_row_7(5, evenStep, 8)
+    set_row_7(6, oddStep, 8)
+    set_row_7(7, oddStep, 8)
+    set_row_7(8, evenStep, 8)
+    set_row_7(9, evenStep, 8)
+}
+
+function do_obstacle_7(step)
+{
+    if (step == 0)
+    {
+        reset_zone_space()
+    }
+
+    if (step % 2 == 1)
+    {
+        return
+    }
+
+    local oddRow = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,
+        31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1]
+
+    local evenRow = [32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,
+        1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]   
+
+    local currentStep = (step / 2) % oddRow.len()
+
+    update_7(oddRow[currentStep], evenRow[currentStep])
+}
+
+function do_obstacle_5(step)
+{
+    local step = step % 30
+    if (step < 10)
+    {
+        local col = step
+        explode("2_" + col, Vec3(0, 1, 1))
+        explode("5_" + col, Vec3(0, 1, 1))
+        explode("8_" + col, Vec3(0, 1, 1))
+    }
+    else if (step < 20)
+    {
+        local col = 19 - step
+        explode("0_" + col)
+        explode("1_" + col)
+        explode("3_" + col)
+        explode("4_" + col)
+        explode("6_" + col)
+        explode("7_" + col)
+        explode("9_" + col)
+    }
+}
+
+function do_obstacle_4(step)
+{
+    if (step == 0)
+    {
+        for (local y = 0; y < 10; ++y)
+        {
+            for (local x = 0; x < 4; ++x)
+            {
+                make_space(y + "_" + x)        
+            }
+            for (local x = 6; x < 10; ++x)
+            {
+                make_space(y + "_" + x)        
+            }     
+        }
+    }
+
+    if (step % 10 == 0)
+    {
+        local bLeft = (((step / 10) % 2) == 0);
+        local col = bLeft ? 4 : 5;
+        local color = bLeft ? Vec3(1, 0, 0) : Vec3(0, 0, 1)
+        for (local row=0; row<10; ++row)
+        {
+            explode(row + "_" + col, color)
+        }
+    }
+}
+
+class BumpInfo
+{
+    m_z = null
+    m_aabr = null
+    
+    constructor(locName, magnitude)
+    {
+        m_z = 2 * magnitude
+        m_aabr = gx_get_location_prop(LocationProp.AABR, locName)
+        m_aabr.m_min += Vec2(1, 1)
+        m_aabr.m_max -= Vec2(1, 1)
+        gx_terrain_offset_z_set_2({m_aabrs = [m_aabr], m_val = m_z})
+    }
+
+    function Update()
+    {
+        m_z -= 0.2
+        m_z = max(0, m_z)
+        gx_terrain_offset_z_set_2({m_aabrs = [m_aabr], m_val = m_z})
+    }
+}
+
+local obstacle3_bumps = []
+
+function create_bump(locName)
+{
+    local bumpInfo = BumpInfo(locName, 1.5)
+    obstacle3_bumps.append(bumpInfo)
+
+    local centerPt = bumpInfo.m_aabr.GetCenter()
+
+    local unit_ids = gx_get_units({
+        m_locations = [locName],
+        m_bIncludeAirUnits = false
+    })
+
+    foreach (unit in unit_ids)
+    {
+        local pos = gx_get_unit_position(unit).xy()
+        local directionToThrow = pos - centerPt
+
+        if (bumpInfo.m_aabr.Contains(pos))
+        {
+            gx_fling_unit(unit, {
+                m_dir3d = Vec3(0, 0, 1)
+             })
+        }
+        else
+        {
+            gx_fling_unit(unit, {
+                m_dir2d = directionToThrow
+            })
+        }
+    }
+}
+
+function clear_obstacle_3()
+{
+    local zoneAABR = gx_get_location_prop(LocationProp.AABR, "Zone")
+    gx_terrain_offset_z_set_2({m_aabrs = [zoneAABR], m_val = 0})
+    obstacle3_bumps = []
+}
+
+function update_bumps()
+{
+    obstacle3_bumps = obstacle3_bumps.filter(
+        function(index, val) {
+            return (val.m_z > 0)
+        });
+
+    foreach (bump in obstacle3_bumps)
+    {
+        bump.Update()
+    }
+}
+
+function do_obstacle_3(step)
+{
+    local theLocations = [ "0_2", "3_2", "3_5", "5_7", "7_5" ]
+
+    if (step == 0)
+    {
+        reset_zone_space()
+        gx_set_terrain_type_2( {
+            m_locations = theLocations,
+            m_type = TerrainType.Normal
+        })  
+    }
+
+    update_bumps()
+
+    if (obstacle3_bumps.len() == 0)
+    {
+        foreach (loc in theLocations)
+        {
+            create_bump(loc)
+        }
+    }
+}
+
+function do_obstacle_1(step)
+{
+    blow_up_row(0, step)
+    blow_up_row(1, step)
+    blow_up_row(2, step)
+    blow_up_row(3, step)
+    blow_up_row(4, step)
+    blow_up_row(5, step)
+    blow_up_row(6, step)
+    blow_up_row(7, step)
+    blow_up_row(8, step)
+    blow_up_row(9, step)
+}
+
+function do_obstacle_10(step)
+{
+    if (step == 0)
+    {
+        local imgColorsHex3 = gx_get_sim_image_colors( { m_img = "User_final" } )
+        local iterations = min(imgColorsHex3.len(), 32)
+        for (local i=0; i<iterations; ++i)
+        {
+            gx_set_terrain_glow_color( { m_index = i,  m_hex = imgColorsHex3[i] } )
+        }
+
+        gx_draw_glow_image({m_img = "User_final",  m_location = "Zone" })
+    }
+}
+
+function do_remove_units_for_player(playerID)
+{
+    local unit_ids = gx_get_units({ m_playerIDs = [ playerID ]})
+    foreach (unit_id in unit_ids)
+    {
+        gx_remove_unit(unit_id)
+    }
+}
+
+function do_respawn_trigger()
+{
+    local bSetCameraLoc = (gx_get_sim_tick() == 1)
+    local player_ids = get_players()
+    foreach (player_id in player_ids)
+    {
+        local theCount = gx_get_units_count(
+        {
+            m_playerIDs = [ player_id ],
+            m_unitTypes = [ get_unit_type_for_player(player_id) ]
+        })
+
+        if (theCount == 0)
+        {
+            local unit_id = gx_create_unit({m_playerID = player_id, m_unitType = get_unit_type_for_player(player_id), m_location = "Spawn"})
+            if (bSetCameraLoc)
+            {
+                gx_set_player_camera_look_at(player_id, { m_unitID = unit_id })
+            }
+
+            local newUnitName = Unicode.Color_Effect_Rainbow + gx_get_unit_prop(UnitProp.FriendlyName, unit_id);
+            gx_set_unit_prop(UnitProp.FriendlyName, unit_id, newUnitName);
+        }
+    }
+}
+
+function set_level(level)
+{
+    # Clear current obstacle
+    {
+        local functionToCall = "clear_obstacle_" + g_level
+        if (functionToCall in getroottable())
+        {
+            getroottable()[functionToCall]()
+        }
+    }
+
+    if ((0 < level) && (level <= g_highestLevel))
+    {
+        g_level = level
+    }
+
+    local digit_0 = g_level / 10
+    local digit_1 = g_level % 10
+    
+    {
+        local decalIDs = gx_decal_get_all_by_tag("Digit_0")
+        foreach (decalID in decalIDs)
+        {
+            gx_decal_modify(decalID, { m_texture = "User_number_" + digit_0 })
+        }
+    }
+
+    {
+        local decalIDs = gx_decal_get_all_by_tag("Digit_1")
+        foreach (decalID in decalIDs)
+        {
+            gx_decal_modify(decalID, { m_texture = "User_number_" + digit_1 })
+        }
+    }
+
+    g_currentStep = 0
+    reset_zone_normal()
+
+    local unit_ids = gx_get_units( { m_locations = [ "KillZone" ] } )
+    foreach (unit_id in unit_ids)
+    {
+        if (gx_get_player(unit_id) != SpecialPlayer.Neutral)
+        {
+            gx_set_unit_position(unit_id, { m_location = "Spawn" })
+        }
+        else
+        {
+            gx_remove_unit(unit_id)  
+        }
+    }
+
+    set_image(g_level)
+}
+
+function check_if_obstacle_finished()
+{
+    local unit_ids = gx_get_units( {
+        m_locations = [ "Finish" ],
+        m_bIncludeAirUnits = false
+    } )
+
+    foreach (unit_id in unit_ids)
+    {
+        local player_id = gx_get_player(unit_id)
+        gx_add_player_prop(PlayerProp.Score, player_id, 1)
+    }
+
+    
+    if (unit_ids.len() > 0)
+    {
+        if (g_level == g_highestLevel)
+        {
+            gx_set_victory_status({
+                m_forceIDs = [1],
+                m_img = "User_gif_test",
+                m_color = ComplexColor(),
+                m_bgColor = ComplexColor(ColorType.Rainbow, Vec4(1.0, 1.0, 1.0, 0.7)),
+                m_sound = "User_victory"
+            })
+            set_level(g_level)
+
+            local playerIDs = gx_get_players()
+            foreach (playerID in playerIDs)
+            {
+                gx_set_achievement_for_player(playerID, "DRIFT_BOUNDER")
+            }
+        }
+        else
+        {
+            set_level(g_level + 1)
+            local str = Unicode.Special_PushColor
+                + gx_str_encode_complex_color(ComplexColor(ColorType.Rainbow)) + g_level
+                + Unicode.Special_PopColor
+            gx_print("Nice work! You are on Level " + str + "! " + Unicode.Emoji_GrinningFace, {
+                m_sound = "User_yay"
+            })
+        }
+    }
+}
+
+function GetBox(tick)
+{
+    local topLeft = gx_get_location_prop(LocationProp.TopLeft, "TopLeft")
+    local bottomLeft = gx_get_location_prop(LocationProp.BottomLeft, "BottomLeft")
+    local bottomRight = gx_get_location_prop(LocationProp.BottomRight, "BottomRight")
+    local topRight = gx_get_location_prop(LocationProp.TopRight, "TopRight")
+
+    local ticksForBottomAndTop = topRight.m_x - bottomLeft.m_x - 4
+    local ticksForLeftAndRight = topLeft.m_y - bottomRight.m_y - 4
+
+    local totalTicks = (ticksForBottomAndTop + ticksForLeftAndRight) * 2
+
+    tick = tick % totalTicks
+
+    # STARTS BOTTOM LEFT
+    if (tick < ticksForBottomAndTop) # bottom, Left --> Right
+    {
+        local b2 = AABR()
+        b2.m_min = bottomLeft + Vec2(4, 0) + Vec2(tick, 0)
+        b2.m_max = b2.m_min + Vec2(1, 4)
+        return b2
+    }
+    # STARTS BOTTOM RIGHT
+    else if (tick < (ticksForBottomAndTop+ticksForLeftAndRight)) # right, Bottom --> Top
+    {
+        tick = tick - ticksForBottomAndTop
+        local b2 = AABR()
+        b2.m_min = bottomRight + Vec2(-4, 4) + Vec2(0, tick)
+        b2.m_max = b2.m_min + Vec2(4, 1)
+        return b2
+    }
+    # STARTS TOP RIGHT
+    else if (tick < (ticksForBottomAndTop*2+ticksForLeftAndRight)) # top,  Right --> Left
+    {
+        tick = tick - ticksForBottomAndTop - ticksForLeftAndRight
+        local b2 = AABR()
+        b2.m_min = topRight + Vec2(-5, -4) + Vec2(-tick, 0)
+        b2.m_max = b2.m_min + Vec2(1, 4)
+        return b2
+    }
+    # STARTS TOP LEFT
+    else
+    {
+        tick = tick - (ticksForBottomAndTop*2+ticksForLeftAndRight) # left,    Top --> Bottom
+        local b2 = AABR()
+        b2.m_min = topLeft + Vec2(0, -5) + Vec2(0, -tick)
+        b2.m_max = b2.m_min + Vec2(4, 1)
+        return b2
+    }
+}
+
+function gx_sim_init()
+{
+    local player_ids = get_players()
+    foreach (player_id in player_ids)
+    {
+        # gx_set_area_vision(player_id, {m_location="MainLocation", m_bSet=true } )
+        # gx_set_area_vision(player_id, { m_location = "Number", m_bSet = true } )
+        # gx_set_area_vision(player_id, { m_location = "Image", m_bSet = true } )
+        gx_set_area_vision(player_id, { m_bFullMapVision = true, m_bSet = true } )
+        g_tagsPerPlayer[player_id] <- gx_get_player_prop(PlayerProp.TagID, player_id)
+    }
+
+    gx_modify_scoreboard({m_bDisplay = true, m_bShowPlayerScores = true})
+
+    local player_ids = get_players()
+    foreach (player_id in player_ids)
+    {
+        local hsl = Vec3(rand() % 360, 100, 50)
+        local srgb = gx_color_hsl_to_srgb(hsl)
+        gx_set_player_prop(PlayerProp.Color, player_id, srgb)
+    }
+
+    set_level(1)
+
+    # initialize rotating water
+    for (local i=0; i<40; ++i)
+    {
+        update_row(i)
+    }
+}
+
+function alternate(pos)
+{
+    local styleToSet = TerrainType.Lava
+    local theStyle = gx_get_terrain_type(pos, 0)
+    if (theStyle.m_x == TerrainType.Lava)
+    {
+        styleToSet = TerrainType.Water
+    }
+    gx_set_terrain_type({ m_type = styleToSet, m_index = pos })
+}
+
+function update_row(tick)
+{
+    local b = GetBox(tick)
+
+    for (local y = b.m_max.m_y; y != b.m_min.m_y; --y)
+    {
+        for (local x = b.m_min.m_x; x != b.m_max.m_x; ++x)
+        {
+            alternate(Vec2(x, y))
+        }
+    }
+}
+
+function update_pool()
+{
+    local tick = gx_get_sim_tick() - 1
+    update_row(tick + 0)
+    update_row(tick + 40)
+}
+
+function update_player_colors()
+{
+    local playerIDs = get_players()
+    foreach (playerID in playerIDs)
+    {
+        local colorSRGB = gx_get_player_prop(PlayerProp.Color, playerID)
+        local colorHSL = gx_color_srgb_to_hsl(colorSRGB)
+        colorHSL.m_x += 10
+        colorSRGB = gx_color_hsl_to_srgb(colorHSL)
+        gx_set_player_prop(PlayerProp.Color, playerID, colorSRGB)
+    }
+}
+
+function update_unit_health()
+{
+    local tick = gx_get_sim_tick()
+    local playerIDs = get_players()
+    foreach (playerID in playerIDs)
+    {
+        local unit_ids = gx_get_units( { m_playerID = playerID } )
+        foreach (unit_id in unit_ids)
+        {
+            local maxHealth = gx_get_unit_prop(UnitProp.MaxHealth, unit_id).tofloat()
+            if (tick % 4 == 0)
+            {
+                gx_set_unit_prop(UnitProp.Health, unit_id, maxHealth)
+            }
+            else if (tick % 4 == 1)
+            {
+                gx_set_unit_prop(UnitProp.Health, unit_id, maxHealth / 2)
+            }
+            else if (tick % 4 == 2)
+            {
+                gx_set_unit_prop(UnitProp.Health, unit_id, 1)
+            }
+            else if (tick % 4 == 3)
+            {
+                gx_set_unit_prop(UnitProp.Health, unit_id, maxHealth / 2)
+            }
+        }
+    }
+}
+
+function gx_sim_update()
+{
+    while (!gx_is_event_queue_empty())
+    {
+        local ev = gx_pop_event_from_queue()
+        if (ev.m_type == EventType.PlayerLeftGame)
+        {
+            gx_set_defeat({ m_playerIDs = [ev.m_playerID] })
+        }
+        else if (ev.m_type == EventType.PlayerNameColorChanged)
+        {
+            gx_print(ev.m_oldPlayerName2 + " changed color to " + ev.m_playerName2)
+        }
+        else if (ev.m_type == EventType.PlayerNameChanged)
+        {
+            gx_print(ev.m_oldPlayerName2 + " changed name to " + ev.m_playerName2)
+        }
+        else if (ev.m_type == EventType.TextCommand)
+        {
+            local values = gx_str_parse_command(ev.m_cmd)
+            if (values.len() > 0)
+            {
+                if (values[0] == "Brute")
+                {
+                    g_tagsPerPlayer[ev.m_playerID] <- 2
+                    do_remove_units_for_player(ev.m_playerID)        
+                }
+                else if (values[0] == "Bounder")
+                {
+                    g_tagsPerPlayer[ev.m_playerID] <- 1
+                    do_remove_units_for_player(ev.m_playerID)
+                }
+                else if ((values[0] == "Skip") || (values[0] == "Next"))
+                {
+                    set_level(g_level+1)
+                }
+                else if ((values[0] == "Prev") || (values[0] == "Previous"))
+                {
+                    set_level(g_level-1)
+                }
+                else if ((values[0] == "Repeat"))
+                {
+                    set_level(g_level)
+                }
+                else
+                {
+                    if (values.len() > 1)
+                    {
+                        if (values[0] == "Level")
+                        {
+                            set_level(gx_convert_to_int(values[1]))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    check_if_obstacle_finished()
+
+    # call the appropriate function using a string
+    # (sort of like a function pointer)
+    # this is a shortcut rather than having a long
+    # chain of if/elseif/else statements
+    local functionToCall = "do_obstacle_" + g_level
+    getroottable()[functionToCall](g_currentStep)
+
+    do_respawn_trigger()
+    update_pool()
+    update_decals()
+    update_player_colors()
+    g_currentStep += 1
+}

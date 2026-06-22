@@ -1,0 +1,256 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "DriftScript",
+  "scopeName": "source.driftscript",
+  "fileTypes": ["DriftScript"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#classes" },
+    { "include": "#enums" },
+    { "include": "#types" },
+    { "include": "#functions" },
+    { "include": "#variables" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.driftscript",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.driftscript",
+          "match": "\\b(if|else|while|for|foreach|switch|case|default|break|continue|return|yield|try|catch|throw|in|is|is_not|not_in)\\b"
+        },
+        {
+          "name": "storage.type.driftscript",
+          "match": "\\b(static|extends|constructor|base|this)\\b"
+        },
+        {
+          "name": "keyword.operator.word.driftscript",
+          "match": "\\b(typeof|instanceof|delete|clone|resume|is_not|not_in)\\b"
+        },
+        {
+          "name": "storage.modifier.driftscript",
+          "match": "\\b(__LINE__|__FILE__)\\b"
+        },
+        {
+          "name": "keyword.other.import.driftscript",
+          "match": "\\b(require|import)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.driftscript",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.driftscript",
+          "match": "\\bnull\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.driftscript",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.octal.driftscript",
+          "match": "\\b0[0-7]+\\b"
+        },
+        {
+          "name": "constant.numeric.float.driftscript",
+          "match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.driftscript",
+          "match": "\\b[0-9]+\\b"
+        },
+        {
+          "name": "constant.character.driftscript",
+          "match": "'(\\\\.|[^'\\\\])'"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.driftscript",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.driftscript",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.verbatim.driftscript",
+          "begin": "@\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.driftscript",
+              "match": "\"\""
+            }
+          ]
+        }
+      ]
+    },
+    "classes": {
+      "patterns": [
+        {
+          "match": "\\b(class)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b(\\s*(extends)\\s+([A-Za-z_][A-Za-z0-9_.]*))?",
+          "captures": {
+            "1": { "name": "storage.type.class.driftscript" },
+            "2": { "name": "entity.name.type.class.driftscript" },
+            "4": { "name": "storage.modifier.extends.driftscript" },
+            "5": { "name": "entity.other.inherited-class.driftscript" }
+          }
+        }
+      ]
+    },
+    "enums": {
+      "patterns": [
+        {
+          "match": "\\b(enum)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "storage.type.enum.driftscript" },
+            "2": { "name": "entity.name.type.enum.driftscript" }
+          }
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.primitive.driftscript",
+          "match": "\\b(table|int|float|string|bool|void)\\b"
+        },
+        {
+          "name": "support.type.vector.driftscript",
+          "match": "\\b(Expr|Random|ComplexColor|Vec2|Vec3|Vec4|Float2|Float3|Float4|Int2|Int3|Int4|AABR|AABR_float|AABR_int)\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "\\b(function)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "storage.type.function.driftscript" },
+            "2": { "name": "entity.name.function.driftscript" }
+          }
+        },
+        {
+          "match": "\\b(function)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "storage.type.function.driftscript" }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+          "name": "entity.name.function.call.driftscript"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "match": "\\b(local)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "storage.type.driftscript" },
+            "2": { "name": "variable.other.driftscript" }
+          }
+        },
+        {
+          "name": "variable.other.driftscript",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.floor-division.driftscript",
+          "match": "//"
+        },
+        {
+          "name": "keyword.operator.comparison.driftscript",
+          "match": "(==|!=|<=>|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.assignment.compound.driftscript",
+          "match": "(\\+=|-=|\\*=|/=|%=|<-)"
+        },
+        {
+          "name": "keyword.operator.increment-decrement.driftscript",
+          "match": "(\\+\\+|--)"
+        },
+        {
+          "name": "keyword.operator.logical.driftscript",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.bitwise.driftscript",
+          "match": "(\\^|&|\\||~|<<|>>>|>>)"
+        },
+        {
+          "name": "keyword.operator.ternary.driftscript",
+          "match": "(\\?|:)"
+        },
+        {
+          "name": "keyword.operator.assignment.driftscript",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.driftscript",
+          "match": "(\\+|-|\\*|/|%)"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.comma.driftscript",
+          "match": ","
+        },
+        {
+          "name": "punctuation.terminator.statement.driftscript",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.accessor.driftscript",
+          "match": "(\\.|::)"
+        },
+        {
+          "name": "punctuation.section.braces.driftscript",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.section.brackets.driftscript",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.section.parens.driftscript",
+          "match": "[()]"
+        }
+      ]
+    }
+  }
+}

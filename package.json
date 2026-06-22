@@ -1,0 +1,34 @@
+{
+  "name": "driftscript-language",
+  "displayName": "DriftScript",
+  "description": "DriftScript language support.. The official scripting language for Drift Wars!",
+  "version": "0.0.13",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "publisher": "BRZDRIFT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Programming Languages"],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:driftscript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "driftscript",
+        "aliases": ["DriftScript", "driftscript"],
+        "extensions": [".DriftScript"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "driftscript",
+        "scopeName": "source.driftscript",
+        "path": "./syntaxes/driftscript.tmLanguage.json"
+      }
+    ]
+  }
+}
