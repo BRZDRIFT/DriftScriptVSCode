@@ -2,9 +2,9 @@
 
 Official language of Drift Wars!
 
-## Tips
+## About
 
-- Provides auto-complete, help hints, and syntax higlighting.
+- Provides auto-complete, help hints, and syntax highlighting.
 - You can comment/uncomment multiple selected lines with `Ctrl+/`
 - More improvements and better syntax highlighting to come!
 
