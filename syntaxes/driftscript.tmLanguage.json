@@ -21,6 +21,11 @@
     "comments": {
       "patterns": [
         {
+          "name": "comment.block.driftscript",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
           "name": "comment.line.number-sign.driftscript",
           "match": "#.*$"
         }

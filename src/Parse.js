@@ -20,123 +20,120 @@ const ENUM_START_RE =
     );
 
 const ENUM_MEMBER_RE = /^[ \t]*([A-Za-z_]\w*)\s*(?:=\s*[^,\n\r}]*)?\s*,?\s*$/;
- 
-function stripLineComment(line)
+
+function getCommentsAboveFunctionMultiBlock(lines, functionLineIndex)
 {
-    let commentBeginIndex = line.indexOf('#');
-    if (commentBeginIndex == -1)
+    let idx = functionLineIndex - 1;
+
+    if (idx < 0)
     {
-        return '';
+        return [];
     }
 
-    let sliceIndex = commentBeginIndex + 1;
-
-    if (line[sliceIndex] == '@')
+    if (lines[idx] != '*/')
     {
-        sliceIndex += 1;
+        return [];
     }
 
-    if (line[sliceIndex] == ' ')
+    let output = [];
+
+    idx -= 1;
+    while (true)
     {
-        sliceIndex += 1;
-    }
-
-    return line.slice(sliceIndex);
-}
-
-function getFunctionSignature(namespace, lines, declIndex, backup)
-{
-    let idx = declIndex - 1;
-    if (idx < 0) return backup;
- 
-    const line = lines[idx];
-    if (!line) return backup;
- 
-    const trimmed = line.trim();
- 
-    if (trimmed.length === 0) return backup;
- 
-    if (trimmed.startsWith('#'))
-    {    
-        let i = idx;
- 
-        while (i >= 0 && lines[i].trim().startsWith('#'))
+        if (idx < 0)
         {
-            if (lines[i].trim().startsWith('#@'))
-            {
-                return stripLineComment(lines[i]);
-            }
-            i--;
+            return [];
         }
+
+        if (lines[idx] == '/*')
+        {
+            break;
+        }
+
+        if (lines[idx].includes('/*'))
+        {
+            return [];
+        }
+
+        output.unshift(lines[idx]);
+        idx = idx - 1;
     }
- 
-    return backup;
+
+    return output;
 }
 
-function shouldSkip(lines, declIndex) {
-    let idx = declIndex - 1;
-    if (idx < 0) return false;
- 
-    const line = lines[idx];
-    if (!line) return false;
- 
-    const trimmed = line.trim();
- 
-    if (trimmed.length === 0) return false;
- 
-    if (trimmed.startsWith('#')) {
-        
-        const collected = [];
-        let i = idx;
- 
-        while (i >= 0 && lines[i].trim().startsWith('#')) {
-            if (lines[i].trim().startsWith('#!'))
-            {
-                return true;
-            }
-            i--;
+function getCommentsAboveFunctionHashTag(lines, functionLineIndex)
+{
+    let idx = functionLineIndex - 1;
+    let output = [];
+
+    while (true)
+    {
+        if (idx < 0)
+        {
+            break;
         }
- 
-        return false;
+
+        if (!lines[idx].startsWith('#'))
+        {
+            break;
+        }
+
+        output.unshift(lines[idx].substring(2));
+        idx = idx - 1;
     }
- 
-    return false;
+
+    return output;
 }
 
-function getLeadingComment(lines, declIndex) {
-    let idx = declIndex - 1;
-    if (idx < 0) return '';
- 
-    const line = lines[idx];
-    if (!line) return '';
- 
-    const trimmed = line.trim();
- 
-    if (trimmed.length === 0) return '';
- 
-    if (trimmed.startsWith('#')) {
-        
-        const collected = [];
-        let i = idx;
- 
-        while (i >= 0 && lines[i].trim().startsWith('#')) {
-            if (!lines[i].trim().startsWith('#@'))
-            {
-                collected.unshift(stripLineComment(lines[i]));
-            }
-            i--;
-        }
- 
-        return collected.join("  \n");
+function getLeadingComment(lines, functionLineIndex)
+{
+    let outputLines = getCommentsAboveFunctionHashTag(lines, functionLineIndex);
+    if (outputLines.length == 0)
+    {
+        outputLines = getCommentsAboveFunctionMultiBlock(lines, functionLineIndex);
     }
- 
-    return '';
+
+    let bShow = true;
+    let proto = '';
+    let comment = '';
+
+    for (const line of outputLines)
+    {
+        if (line == '!')
+        {
+            bShow = false;
+            continue;
+        }
+
+        if (line.startsWith('@ '))
+        {
+            proto = line.substring(2);
+            continue;
+        }
+
+        if (comment.length == 0)
+        {
+            comment += line;
+        }
+        else
+        {
+            comment += ('  \n' + line);
+        }
+    }
+
+    console.log("Comment Start:")
+    console.log(comment)
+    console.log("Comment End:")
+    return [bShow, proto, comment];
 }
  
-function GetNameSpaceAndIdentifier(str) {
+function GetNameSpaceAndIdentifier(str)
+{
     const idx = str.lastIndexOf('.');
 
-    if (idx === -1) {
+    if (idx === -1)
+    {
         return ["", str];
     }
 
@@ -178,12 +175,13 @@ function AppendNamespace(namespace, symbol)
 }
 
 function ParseAndGetSymbols(uriStr, text) {
-    const lines = text.split(/\r?\n/);
+    const lines = text.split(/\r\n|\r|\n/);
     const symbols = [];
 
     const namespaces = {}
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.length; i++)
+    {
         const line = lines[i];
         let m;
  
@@ -194,9 +192,9 @@ function ParseAndGetSymbols(uriStr, text) {
             let [theNamespace, enumName] = GetNameSpaceAndIdentifier(m[1]);
 
             const braceOnSameLine = !!m[2];
-            const bSkip = shouldSkip(lines, i);
+            let [bShow, proto, comment] = getLeadingComment(lines, i);
 
-            if (!bSkip)
+            if (bShow)
             {
                 AddNamespaces(namespaces, theNamespace);
 
@@ -205,7 +203,7 @@ function ParseAndGetSymbols(uriStr, text) {
                     name: enumName,
                     namespace: theNamespace,
                     signature: 'enum ' + AppendNamespace(theNamespace, enumName),
-                    doc: getLeadingComment(lines, i),
+                    doc: comment,
                     line: i,
                     uri: uriStr
                 });
@@ -236,13 +234,13 @@ function ParseAndGetSymbols(uriStr, text) {
             // parse enum body
             while (i < lines.length && !/^\s*\}/.test(lines[i]))
             {
-                const bLocalSkip = shouldSkip(lines, i);
+                let [bLocalShow, proto, comment] = getLeadingComment(lines, i);
                 const trimmed = lines[i].trim();
                 if (trimmed.length > 0)
                 {
                     const memberMatch = ENUM_MEMBER_RE.exec(lines[i]);
  
-                    if (memberMatch && !bSkip && !bLocalSkip) {
+                    if (memberMatch && bShow && bLocalShow) {
                         let theName = memberMatch[1];
 
                         symbols.push({
@@ -251,7 +249,7 @@ function ParseAndGetSymbols(uriStr, text) {
                             enum: enumName,
                             namespace: theNamespace,
                             signature: 'enum_val ' + AppendNamespace(theNamespace, enumName) + '.' + theName,
-                            doc: getLeadingComment(lines, i),
+                            doc: comment,
                             line: i,
                             uri: uriStr
                         });
@@ -270,16 +268,14 @@ function ParseAndGetSymbols(uriStr, text) {
         m = FUNCTION_RE.exec(line);
         if (m)
         {
-            const bSkip = shouldSkip(lines, i);
-            if (!bSkip)
+            let [bShow, proto, comment] = getLeadingComment(lines, i);
+            if (bShow)
             {
-                const comment = getLeadingComment(lines, i);
-
                 let [theNamespace, functionName] = GetNameSpaceAndIdentifier(m[1]);
                 AddNamespaces(namespaces, theNamespace);
 
                 let defaultName = AppendNamespace(theNamespace, functionName);
-                let sig = getFunctionSignature(theNamespace, lines, i, `function ${defaultName}(${m[2].trim()})`);
+                let sig = (proto != '') ? proto : `function ${defaultName}(${m[2].trim()})`;
 
                 symbols.push({
                     kind: 'function',
@@ -298,8 +294,8 @@ function ParseAndGetSymbols(uriStr, text) {
         m = CLASS_RE.exec(line);
         if (m)
         {
-            const bSkip = shouldSkip(lines, i);
-            if (!bSkip)
+            let [bShow, proto, comment] = getLeadingComment(lines, i);
+            if (bShow)
             {
                 let [theNamespace, className] = GetNameSpaceAndIdentifier(m[1]);
                 AddNamespaces(namespaces, theNamespace);
@@ -316,7 +312,7 @@ function ParseAndGetSymbols(uriStr, text) {
                     name: className,
                     namespace: theNamespace,
                     signature: sig,
-                    doc: getLeadingComment(lines, i),
+                    doc: comment,
                     line: i,
                     uri: uriStr
                 });
@@ -328,14 +324,14 @@ function ParseAndGetSymbols(uriStr, text) {
         m = LOCAL_RE.exec(line);
         if (m)
         {
-            const bSkip = shouldSkip(lines, i);
-            if (!bSkip)
+            let [bShow, proto, comment] = getLeadingComment(lines, i);
+            if (bShow)
             {
                 symbols.push({
                     kind: 'variable',
                     name: m[1],
                     signature: `local ${m[1]}`,
-                    doc: getLeadingComment(lines, i),
+                    doc: comment,
                     namespace: '',
                     line: i,
                     uri: uriStr
@@ -347,15 +343,15 @@ function ParseAndGetSymbols(uriStr, text) {
 
     function addNamespaceSymbols(rootNamespace, thisNamespace, thisNamespaceObj)
     {
-            symbols.push({
-                kind: 'namespace',
-                name: thisNamespace,
-                signature: "namespace " + thisNamespace,
-                doc: '',
-                namespace: rootNamespace,
-                line: 0,
-                uri: uriStr
-            });
+        symbols.push({
+            kind: 'namespace',
+            name: thisNamespace,
+            signature: "namespace " + thisNamespace,
+            doc: '',
+            namespace: rootNamespace,
+            line: 0,
+            uri: uriStr
+        });
 
         for (const namespace in thisNamespaceObj)
         {
