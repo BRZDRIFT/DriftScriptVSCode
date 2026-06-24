@@ -86,12 +86,21 @@ function getCommentsAboveFunctionHashTag(lines, functionLineIndex)
     return output;
 }
 
-function getLeadingComment(lines, functionLineIndex)
+function getLeadingComment(lines, functionLineIndex, MultiBlockOnly = false)
 {
-    let outputLines = getCommentsAboveFunctionHashTag(lines, functionLineIndex);
-    if (outputLines.length == 0)
+    let outputLines = []
+    
+    if (MultiBlockOnly)
     {
         outputLines = getCommentsAboveFunctionMultiBlock(lines, functionLineIndex);
+    }
+    else
+    {
+        outputLines = getCommentsAboveFunctionHashTag(lines, functionLineIndex);
+        if (outputLines.length == 0)
+        {
+            outputLines = getCommentsAboveFunctionMultiBlock(lines, functionLineIndex);
+        }
     }
 
     let bShow = true;
@@ -122,9 +131,6 @@ function getLeadingComment(lines, functionLineIndex)
         }
     }
 
-    console.log("Comment Start:")
-    console.log(comment)
-    console.log("Comment End:")
     return [bShow, proto, comment];
 }
  
@@ -174,96 +180,147 @@ function AppendNamespace(namespace, symbol)
     return symbol;
 }
 
+function ReadEnumMemberComments(allLines, lineIdx)
+{
+    let [bShow, proto, bigComment] = getLeadingComment(allLines, lineIdx, true);
+    let smallComment = allLines[lineIdx];
+    return [smallComment, bigComment];
+}
+
+function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
+{
+    let enumMembers = []
+
+    let bCommit = false;
+    let bParsingEnumMembers = false;
+    let enumWithNamespace = ''
+    
+    {
+        let temp = allLines[lineIdx].split('enum');
+        if (temp.length != 2)
+        {
+            return;
+        }
+        enumWithNamespace = temp[1].split('{')[0].trim().split(/\s+/)[0].trim();
+    }
+    
+    let [bShow, proto, comment] = getLeadingComment(allLines, lineIdx);
+    if (!bShow)
+    {
+        return;
+    }
+    comment = '';
+
+    let bSkip = false;
+    for (let i = lineIdx; i < allLines.length; i++)
+    {
+        if (allLines[i] == '/*')
+        {
+            bSkip = true;
+            continue;
+        }
+        if (allLines[i] == '*/')
+        {
+            bSkip = false;
+            continue;
+        }
+        if (bSkip)
+        {
+            continue;
+        }
+        if (allLines[i].includes('{'))
+        {
+            bParsingEnumMembers = true;
+            continue;
+        }
+        if (allLines[i].includes('}'))
+        {
+            bCommit = true;
+            break;
+        }
+        if (!bParsingEnumMembers)
+        {
+            continue;
+        }
+
+        let enumMemberName = allLines[i].split(/[=,#]/)[0].trim()
+        if (enumMemberName != '')
+        {
+            let [smallComment, bigComment] = ReadEnumMemberComments(allLines, i);
+            enumMembers.push( {
+                name: enumMemberName,
+                line: i,
+                smallComment: smallComment,
+                bigComment: bigComment
+            } )
+        }
+    }
+
+    if (bCommit)
+    {
+        let [theNamespace, enumName] = GetNameSpaceAndIdentifier(enumWithNamespace);
+
+        AddNamespaces(namespacesOut, theNamespace);
+
+        let enumList = '```\nenum ' + AppendNamespace(theNamespace, enumName) + ' {\n';
+        for (let enumMember of enumMembers)
+        {
+            enumList += enumMember['smallComment'];
+            enumList += '\n';
+        }
+        enumList += '}\n```\n';
+
+        symbolsOut.push(
+        {
+            kind: 'enum',
+            name: enumName,
+            namespace: theNamespace,
+            signature: 'enum ' + AppendNamespace(theNamespace, enumName),
+            doc: enumList + comment,
+            line: lineIdx,
+            uri: uriStr
+        });
+
+        for (let enumMember of enumMembers)
+        {
+            symbolsOut.push({
+                kind: 'enumMember',
+                name: enumMember['name'],
+                enum: enumName,
+                namespace: theNamespace,
+                signature: 'enum_val ' + AppendNamespace(theNamespace, enumName) + '.' + enumMember['name'],
+                doc: enumMember['smallComment'] + '\n' + enumMember['bigComment'],
+                line: enumMember['line'],
+                uri: uriStr
+            });
+        }
+    }
+}
+
+function ParseEnums(symbolsOut, namespacesOut, allLines, uriStr)
+{
+    for (let i = 0; i < allLines.length; i++)
+    {
+        if (allLines[i].startsWith('enum '))
+        {
+            ParseEnum(symbolsOut, namespacesOut, allLines, i, uriStr);
+        }
+    }
+}
+
 function ParseAndGetSymbols(uriStr, text) {
     const lines = text.split(/\r\n|\r|\n/);
     const symbols = [];
 
-    const namespaces = {}
+    const namespaces = {};
+
+    ParseEnums(symbols, namespaces, lines, uriStr);
 
     for (let i = 0; i < lines.length; i++)
     {
         const line = lines[i];
         let m;
- 
-        // -------- ENUMS --------
-        m = ENUM_START_RE.exec(line);
-        if (m)
-        {
-            let [theNamespace, enumName] = GetNameSpaceAndIdentifier(m[1]);
-
-            const braceOnSameLine = !!m[2];
-            let [bShow, proto, comment] = getLeadingComment(lines, i);
-
-            if (bShow)
-            {
-                AddNamespaces(namespaces, theNamespace);
-
-                symbols.push({
-                    kind: 'enum',
-                    name: enumName,
-                    namespace: theNamespace,
-                    signature: 'enum ' + AppendNamespace(theNamespace, enumName),
-                    doc: comment,
-                    line: i,
-                    uri: uriStr
-                });
-            }
- 
-            i++;
- 
-            // If the brace wasn't on the declaration line, scan forward for it.
-            // Skip blank lines only - anything else means this isn't a real
-            // enum block (malformed), so we bail out of enum parsing.
-            if (!braceOnSameLine) {
-                while (i < lines.length && lines[i].trim().length === 0) {
-                    i++;
-                }
- 
-                if (i >= lines.length || !/^\s*\{/.test(lines[i])) {
-                    // No brace found - not a valid enum body, don't consume
-                    // anything else. Back up so the outer loop re-examines
-                    // this line normally.
-                    i--;
-                    continue;
-                }
- 
-                // i is now on the line containing '{' - move past it
-                i++;
-            }
- 
-            // parse enum body
-            while (i < lines.length && !/^\s*\}/.test(lines[i]))
-            {
-                let [bLocalShow, proto, comment] = getLeadingComment(lines, i);
-                const trimmed = lines[i].trim();
-                if (trimmed.length > 0)
-                {
-                    const memberMatch = ENUM_MEMBER_RE.exec(lines[i]);
- 
-                    if (memberMatch && bShow && bLocalShow) {
-                        let theName = memberMatch[1];
-
-                        symbols.push({
-                            kind: 'enumMember',
-                            name: theName,
-                            enum: enumName,
-                            namespace: theNamespace,
-                            signature: 'enum_val ' + AppendNamespace(theNamespace, enumName) + '.' + theName,
-                            doc: comment,
-                            line: i,
-                            uri: uriStr
-                        });
-                    }
-                }
- 
-                i++;
-            }
- 
-            // i is either at the closing '}' line or at EOF; the outer
-            // for-loop's i++ will move past it (or past EOF harmlessly).
-            continue;
-        }
- 
+  
         // -------- FUNCTIONS --------
         m = FUNCTION_RE.exec(line);
         if (m)
@@ -368,3 +425,4 @@ function ParseAndGetSymbols(uriStr, text) {
 }
  
 module.exports = { ParseAndGetSymbols }; 
+
