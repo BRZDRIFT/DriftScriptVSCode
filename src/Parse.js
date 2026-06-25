@@ -62,6 +62,17 @@ function getCommentsAboveFunctionMultiBlock(lines, functionLineIndex)
     return output;
 }
 
+function AppendTextBlocks(block0, block1)
+{
+    let text = block0;
+    if ((block0.length > 0) && (block1.length > 0))
+    {
+        text += '\n';
+    }
+    text += block1;
+    return text;
+}
+
 function getCommentsAboveFunctionHashTag(lines, functionLineIndex)
 {
     let idx = functionLineIndex - 1;
@@ -86,15 +97,10 @@ function getCommentsAboveFunctionHashTag(lines, functionLineIndex)
     return output;
 }
 
-function getLeadingComment(lines, functionLineIndex, MultiBlockOnly = false)
+function getLeadingComment(lines, functionLineIndex)
 {
     let outputLines = []
-    
-    if (MultiBlockOnly)
-    {
-        outputLines = getCommentsAboveFunctionMultiBlock(lines, functionLineIndex);
-    }
-    else
+
     {
         outputLines = getCommentsAboveFunctionHashTag(lines, functionLineIndex);
         if (outputLines.length == 0)
@@ -182,9 +188,36 @@ function AppendNamespace(namespace, symbol)
 
 function ReadEnumMemberComments(allLines, lineIdx)
 {
-    let [bShow, proto, bigComment] = getLeadingComment(allLines, lineIdx, true);
-    let smallComment = allLines[lineIdx];
-    return [smallComment, bigComment];
+    let [bShow, proto, bigComment] = getLeadingComment(allLines, lineIdx);
+    
+    let smallCommentStripped = '';
+    let smallComment = '';
+    for (let i=lineIdx; i < allLines.length; ++i)
+    {
+        if (i != lineIdx)
+        {
+            if (!allLines[i].trim().startsWith('#'))
+            {
+                break;
+            }
+        }
+        smallComment += allLines[i] + '\n';
+        let arr = allLines[i].split('#');
+        if (arr.length > 1)
+        {
+            smallCommentStripped += '#' + arr[1] + '\n';
+        }
+    }
+
+    smallComment = smallComment.slice(0, -1);
+    if (smallCommentStripped.length > 0)
+    {
+        smallCommentStripped = smallCommentStripped.slice(0, -1);
+        smallCommentStripped = '```\n' + smallCommentStripped + '\n```';
+    }
+
+
+    return [smallComment, smallCommentStripped, bigComment];
 }
 
 function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
@@ -246,11 +279,12 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
         let enumMemberName = allLines[i].split(/[=,#]/)[0].trim()
         if (enumMemberName != '')
         {
-            let [smallComment, bigComment] = ReadEnumMemberComments(allLines, i);
+            let [smallComment, smallCommentStripped, bigComment] = ReadEnumMemberComments(allLines, i);
             enumMembers.push( {
                 name: enumMemberName,
                 line: i,
                 smallComment: smallComment,
+                smallCommentStripped: smallCommentStripped,
                 bigComment: bigComment
             } )
         }
@@ -289,7 +323,7 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
                 enum: enumName,
                 namespace: theNamespace,
                 signature: 'enum_val ' + AppendNamespace(theNamespace, enumName) + '.' + enumMember['name'],
-                doc: enumMember['smallComment'] + '\n' + enumMember['bigComment'],
+                doc: AppendTextBlocks(enumMember['smallCommentStripped'], enumMember['bigComment']),
                 line: enumMember['line'],
                 uri: uriStr
             });
@@ -325,24 +359,28 @@ function ParseAndGetSymbols(uriStr, text) {
         m = FUNCTION_RE.exec(line);
         if (m)
         {
-            let [bShow, proto, comment] = getLeadingComment(lines, i);
-            if (bShow)
+            let bRootLevel = line.startsWith("function");
+            if (bRootLevel)
             {
-                let [theNamespace, functionName] = GetNameSpaceAndIdentifier(m[1]);
-                AddNamespaces(namespaces, theNamespace);
+                let [bShow, proto, comment] = getLeadingComment(lines, i);
+                if (bShow)
+                {
+                    let [theNamespace, functionName] = GetNameSpaceAndIdentifier(m[1]);
+                    AddNamespaces(namespaces, theNamespace);
 
-                let defaultName = AppendNamespace(theNamespace, functionName);
-                let sig = (proto != '') ? proto : `function ${defaultName}(${m[2].trim()})`;
+                    let defaultName = AppendNamespace(theNamespace, functionName);
+                    let sig = (proto != '') ? proto : `function ${defaultName}(${m[2].trim()})`;
 
-                symbols.push({
-                    kind: 'function',
-                    namespace: theNamespace,
-                    name: functionName,
-                    signature: sig,
-                    doc: comment,
-                    line: i,
-                    uri: uriStr
-                });
+                    symbols.push({
+                        kind: 'function',
+                        namespace: theNamespace,
+                        name: functionName,
+                        signature: sig,
+                        doc: comment,
+                        line: i,
+                        uri: uriStr
+                    });
+                }
             }
             continue;
         }
@@ -351,28 +389,32 @@ function ParseAndGetSymbols(uriStr, text) {
         m = CLASS_RE.exec(line);
         if (m)
         {
-            let [bShow, proto, comment] = getLeadingComment(lines, i);
-            if (bShow)
+            let bRootLevel = line.startsWith("class");
+            if (bRootLevel)
             {
-                let [theNamespace, className] = GetNameSpaceAndIdentifier(m[1]);
-                AddNamespaces(namespaces, theNamespace);
+                let [bShow, proto, comment] = getLeadingComment(lines, i);
+                if (bShow)
+                {
+                    let [theNamespace, className] = GetNameSpaceAndIdentifier(m[1]);
+                    AddNamespaces(namespaces, theNamespace);
 
-                let sig = '';
-                if (m[2]) {
-                    sig = 'class ' + AppendNamespace(theNamespace, className) + ' extends ' + m[2];
-                } else {
-                    sig = 'class ' + AppendNamespace(theNamespace, className);
+                    let sig = '';
+                    if (m[2]) {
+                        sig = 'class ' + AppendNamespace(theNamespace, className) + ' extends ' + m[2];
+                    } else {
+                        sig = 'class ' + AppendNamespace(theNamespace, className);
+                    }
+
+                    symbols.push({
+                        kind: 'class',
+                        name: className,
+                        namespace: theNamespace,
+                        signature: sig,
+                        doc: comment,
+                        line: i,
+                        uri: uriStr
+                    });
                 }
-
-                symbols.push({
-                    kind: 'class',
-                    name: className,
-                    namespace: theNamespace,
-                    signature: sig,
-                    doc: comment,
-                    line: i,
-                    uri: uriStr
-                });
             }
             continue;
         }
