@@ -201,11 +201,11 @@ function ReadEnumMemberComments(allLines, lineIdx)
                 break;
             }
         }
-        smallComment += allLines[i] + '\n';
-        let arr = allLines[i].split('#');
+        smallComment += allLines[i] + '  \n';
+        let arr = allLines[i].split('# ');
         if (arr.length > 1)
         {
-            smallCommentStripped += '#' + arr[1] + '\n';
+            smallCommentStripped += arr[1] + '  \n';
         }
     }
 
@@ -213,7 +213,6 @@ function ReadEnumMemberComments(allLines, lineIdx)
     if (smallCommentStripped.length > 0)
     {
         smallCommentStripped = smallCommentStripped.slice(0, -1);
-        smallCommentStripped = '```\n' + smallCommentStripped + '\n```';
     }
 
 
@@ -317,13 +316,15 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
 
         for (let enumMember of enumMembers)
         {
+            let docText = AppendTextBlocks(enumMember['smallCommentStripped'], enumMember['bigComment']);
+
             symbolsOut.push({
                 kind: 'enumMember',
                 name: enumMember['name'],
                 enum: enumName,
                 namespace: theNamespace,
                 signature: 'enum_val ' + AppendNamespace(theNamespace, enumName) + '.' + enumMember['name'],
-                doc: AppendTextBlocks(enumMember['smallCommentStripped'], enumMember['bigComment']),
+                doc: docText,
                 line: enumMember['line'],
                 uri: uriStr
             });
