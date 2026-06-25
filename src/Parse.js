@@ -127,15 +127,10 @@ function getLeadingComment(lines, functionLineIndex)
             continue;
         }
 
-        if (comment.length == 0)
-        {
-            comment += line;
-        }
-        else
-        {
-            comment += ('  \n' + line);
-        }
+        comment += line + "\n";
     }
+
+    comment = StripEndNewLine(comment);
 
     return [bShow, proto, comment];
 }
@@ -186,37 +181,60 @@ function AppendNamespace(namespace, symbol)
     return symbol;
 }
 
+function StripEndNewLine(theText)
+{
+    if (theText.length == 0)
+    {
+        return '';
+    }
+    return theText.slice(0, -1);
+}
+
+function CreateStrippedCommentFromEnumComment(enumComment)
+{
+    let finalOutput = '';
+
+    let theLines = enumComment.split('\n');
+    for (let line of theLines)
+    {
+        let idx = line.indexOf('#')
+        if (idx != (-1))
+        {
+            finalOutput += line.slice(idx) + '\n';
+        }
+    }
+
+    finalOutput = StripEndNewLine(finalOutput);
+    if (finalOutput.length > 0)
+    {    
+        return '```\n' + finalOutput + '\n```';
+    }
+    return "";
+}
+
 function ReadEnumMemberComments(allLines, lineIdx)
 {
-    let [bShow, proto, bigComment] = getLeadingComment(allLines, lineIdx);
+    let [bShow, proto, enumComment] = getLeadingComment(allLines, lineIdx);
     
-    let smallCommentStripped = '';
-    let smallComment = '';
+    let enumMemberDef = '';
     for (let i=lineIdx; i < allLines.length; ++i)
     {
-        if (i != lineIdx)
+        if (lineIdx != i)
         {
-            if (!allLines[i].trim().startsWith('#'))
+            if (!allLines[i].includes('#'))
+            {
+                break;
+            }
+            if (allLines[i].split('#')[0].trim() != '')
             {
                 break;
             }
         }
-        smallComment += allLines[i] + '  \n';
-        let arr = allLines[i].split('# ');
-        if (arr.length > 1)
-        {
-            smallCommentStripped += arr[1] + '  \n';
-        }
+        enumMemberDef += allLines[i] + '\n';
     }
 
-    smallComment = smallComment.slice(0, -1);
-    if (smallCommentStripped.length > 0)
-    {
-        smallCommentStripped = smallCommentStripped.slice(0, -1);
-    }
-
-
-    return [smallComment, smallCommentStripped, bigComment];
+    enumMemberDef = StripEndNewLine(enumMemberDef);
+    return [enumMemberDef, enumComment];
 }
 
 function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
@@ -278,13 +296,12 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
         let enumMemberName = allLines[i].split(/[=,#]/)[0].trim()
         if (enumMemberName != '')
         {
-            let [smallComment, smallCommentStripped, bigComment] = ReadEnumMemberComments(allLines, i);
+            let [enumMemberDef2, enumComment2] = ReadEnumMemberComments(allLines, i);
             enumMembers.push( {
                 name: enumMemberName,
                 line: i,
-                smallComment: smallComment,
-                smallCommentStripped: smallCommentStripped,
-                bigComment: bigComment
+                enumMemberDef: enumMemberDef2,
+                enumComment: enumComment2
             } )
         }
     }
@@ -298,7 +315,7 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
         let enumList = '```\nenum ' + AppendNamespace(theNamespace, enumName) + ' {\n';
         for (let enumMember of enumMembers)
         {
-            enumList += enumMember['smallComment'];
+            enumList += enumMember['enumMemberDef'];
             enumList += '\n';
         }
         enumList += '}\n```\n';
@@ -316,7 +333,8 @@ function ParseEnum(symbolsOut, namespacesOut, allLines, lineIdx, uriStr)
 
         for (let enumMember of enumMembers)
         {
-            let docText = AppendTextBlocks(enumMember['smallCommentStripped'], enumMember['bigComment']);
+            let docText = CreateStrippedCommentFromEnumComment(enumMember['enumMemberDef']);
+            docText = AppendTextBlocks(docText, enumMember['enumComment']);
 
             symbolsOut.push({
                 kind: 'enumMember',

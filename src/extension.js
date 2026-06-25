@@ -418,7 +418,7 @@ function CreateCompletionItemFromSymbol(sym)
     {
         item.documentation = new vscode.MarkdownString(sym.doc);
     }
-
+    
     return item;
 }
 

@@ -149,7 +149,11 @@
         },
         {
           "name": "support.type.vector.driftscript",
-          "match": "\\b(Expr|Random|ComplexColor|Vec2|Vec3|Vec4|Float2|Float3|Float4|Int2|Int3|Int4|AABR|AABR_float|AABR_int)\\b"
+          "match": "\\b(Expr|mixed|Random|ComplexColor|Vec2|Vec3|Vec4|Float2|Float3|Float4|Int2|Int3|Int4|AABR|AABR_float|AABR_int)\\b"
+        },
+        {
+          "name": "support.type.vector.driftscript",
+          "match": "\\b(Race|DeathCause|EffectType|AttackType|VictoryStatus|SpecialPlayer|SpecialForce|CommandType|EventType|ExplosionEventType|ShapeType|BoundsCheck|LocationProp|GunShipState|UnitProp|SimProp|DecalProp|PlayerProp|ArmorType|ForceProp|TerrainType|SecondaryTerrainTypeNormal|Unicode|ColorType|Expr|DynValType|BinaryOp|UnaryOp)\\b"
         }
       ]
     },
