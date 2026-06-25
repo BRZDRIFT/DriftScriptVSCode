@@ -7,6 +7,7 @@ Official language of Drift Wars!
 - Provides auto-complete, help hints, and syntax highlighting.
 - You can comment/uncomment multiple selected lines with `Ctrl+/`
 - More improvements and better syntax highlighting to come!
+- [https://brzdrift.github.io/DriftDocs/driftScript/intro/](DriftScript Documentation)
 
 ## DriftLibs detection
 

@@ -157,11 +157,11 @@ function InitKeywordSymbols()
         }
         if (keyword == 'foreach')
         {
-            addLine('foreach (v in arrayOrDictionary) {');
+            addLine('foreach (v in arrayOrTable) {');
             addLine("  print('value = ' + val);");
             addLine('}');
             addLine('');
-            addLine('foreach (k, v in arrayOrDictionary) {');
+            addLine('foreach (k, v in arrayOrTable) {');
             addLine("  print('key (or array index) = ' + k);");
             addLine("  print('value = ' + v);");
             addLine('}');
