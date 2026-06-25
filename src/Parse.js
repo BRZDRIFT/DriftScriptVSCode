@@ -459,6 +459,7 @@ function ParseAndGetSymbols(uriStr, text) {
         }
     }
 
+
     function addNamespaceSymbols(rootNamespace, thisNamespace, thisNamespaceObj)
     {
         symbols.push({
