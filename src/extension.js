@@ -152,28 +152,34 @@ function InitKeywordSymbols()
         if (keyword == 'for')
         {
             addLine('for (local i=0; i<5; ++i) {');
-            addLine("  print('yay');");
+            addLine('  print("yay");');
             addLine('}');
         }
         if (keyword == 'foreach')
         {
             addLine('foreach (v in arrayOrTable) {');
-            addLine("  print('value = ' + val);");
+            addLine('  print("value = " + val);');
             addLine('}');
             addLine('');
             addLine('foreach (k, v in arrayOrTable) {');
-            addLine("  print('key (or array index) = ' + k);");
-            addLine("  print('value = ' + v);");
+            addLine('  print("key (or array index) = " + k);');
+            addLine('  print("value = " + v);');
+            addLine('}');
+        }
+        if (keyword == 'while')
+        {
+            addLine('while (true) {');
+            addLine('  print("infinite loop!");');
             addLine('}');
         }
         if ((keyword == 'if') || (keyword == 'else'))
         {
             addLine('if (4 < 7) {');
-            addLine("  print('yay 1');");
+            addLine('  print("yay 1");');
             addLine('} else if (2 > 1) {');
-            addLine("  print('yay 2');");
+            addLine('  print("yay 2");');
             addLine("} else {");
-            addLine("  print('yay 3');");
+            addLine('  print("yay 3");');
             addLine('}');
         }
         if (d.length > 0)
@@ -818,6 +824,33 @@ class DriftScriptSignatureHelpProvider
     }
 }
 
+class DocItem extends vscode.TreeItem {
+    constructor(label, url) {
+        super(label, vscode.TreeItemCollapsibleState.None);
+
+        this.command = {
+            command: "driftscript.openDocs",
+            title: "Open Documentation",
+            arguments: [url]
+        };
+    }
+}
+
+class DocsProvider {
+    getTreeItem(element) {
+        return element;
+    }
+
+    getChildren() {
+        return [
+            new DocItem(
+                "Open DriftDocs",
+                "https://brzdrift.github.io/DriftDocs/driftScript/functions/"
+            )
+        ];
+    }
+}
+
 async function activate(context)
 {
     Log("Loading..");
@@ -873,7 +906,19 @@ async function activate(context)
             new DriftScriptHoverHelper()
         )
     );
-    
+        
+    vscode.commands.registerCommand(
+        "driftscript.openDocs",
+        (url) => {
+            vscode.env.openExternal(vscode.Uri.parse(url));
+        }
+    );
+
+    vscode.window.registerTreeDataProvider(
+        "driftscript.docsView",
+        new DocsProvider()
+    );
+
     Log("Loading.. Completed.");
 }
 

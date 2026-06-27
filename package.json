@@ -1,38 +1,47 @@
 {
-  "name": "driftscript-language",
-  "displayName": "DriftScript",
-  "description": "DriftScript language support.. The official scripting language of Drift Wars!",
-  "version": "0.0.23",
-  "license": "MIT",
-  "icon": "images/icon.png",
-  "publisher": "BRZDRIFT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/BRZDRIFT/DriftScriptVSCode.git"
-  },
-  "engines": {
-    "vscode": "^1.80.0"
-  },
-  "categories": ["Programming Languages"],
-  "main": "./src/extension.js",
-  "activationEvents": [
-    "onLanguage:driftscript"
-  ],
-  "contributes": {
-    "languages": [
-      {
-        "id": "driftscript",
-        "aliases": ["DriftScript", "driftscript"],
-        "extensions": [".DriftScript"],
-        "configuration": "./language-configuration.json"
-      }
+    "name": "driftscript-language",
+     "displayName": "DriftScript",
+    "description": "DriftScript language support.. The official scripting language of Drift Wars!",
+    "version": "0.0.26",
+    "license": "MIT",
+    "icon": "images/icon.png",
+    "publisher": "BRZDRIFT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/BRZDRIFT/DriftScriptVSCode.git"
+    },
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": ["Programming Languages"],
+    "main": "./src/extension.js",
+    "activationEvents": [
+        "onLanguage:driftscript"
     ],
-    "grammars": [
-      {
-        "language": "driftscript",
-        "scopeName": "source.driftscript",
-        "path": "./syntaxes/driftscript.tmLanguage.json"
-      }
-    ]
-  }
+    "contributes": {
+        "languages": [{
+            "id": "driftscript",
+            "aliases": ["DriftScript", "driftscript"],
+            "extensions": [".DriftScript"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "driftscript",
+            "scopeName": "source.driftscript",
+            "path": "./syntaxes/driftscript.tmLanguage.json"
+        }],
+        "viewsContainers": {
+            "activitybar": [{
+                "id": "driftscript",
+                "title": "DriftScript",
+                "icon": "images/icon2.png"
+            }]
+        },
+        "views": {
+            "driftscript": [{
+                "id": "driftscript.docsView",
+                "name": "Options"
+            }]
+        }
+    }
 }

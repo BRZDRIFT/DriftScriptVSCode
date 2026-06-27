@@ -35,23 +35,19 @@
       "patterns": [
         {
           "name": "keyword.control.driftscript",
-          "match": "\\b(if|else|while|for|foreach|switch|case|default|break|continue|return|yield|try|catch|throw|in|is|is_not|not_in)\\b"
+          "match": "\\b(if|else|while|for|foreach|switch|case|default|break|continue|return|yield|try|catch|throw)\\b"
         },
         {
           "name": "storage.type.driftscript",
           "match": "\\b(static|extends|constructor|base|this)\\b"
         },
         {
-          "name": "keyword.operator.word.driftscript",
-          "match": "\\b(typeof|instanceof|delete|clone|resume|is_not|not_in)\\b"
+          "name": "keyword.driftscript",
+          "match": "\\b(typeof|instanceof|delete|clone|is|is_not|in|not_in)\\b"
         },
         {
           "name": "storage.modifier.driftscript",
           "match": "\\b(__LINE__|__FILE__)\\b"
-        },
-        {
-          "name": "keyword.other.import.driftscript",
-          "match": "\\b(require|import)\\b"
         }
       ]
     },
@@ -149,11 +145,11 @@
         },
         {
           "name": "support.type.vector.driftscript",
-          "match": "\\b(Expr|mixed|Random|ComplexColor|Vec2|Vec3|Vec4|Float2|Float3|Float4|Int2|Int3|Int4|AABR|AABR_float|AABR_int)\\b"
+          "match": "\\b(object|Expr|mixed|Random|ComplexColor|Vec2|Vec3|Vec4|Float2|Float3|Float4|Int2|Int3|Int4|AABR|AABR_float|AABR_int)\\b"
         },
         {
           "name": "support.type.vector.driftscript",
-          "match": "\\b(Race|DeathCause|EffectType|AttackType|VictoryStatus|SpecialPlayer|SpecialForce|CommandType|EventType|ExplosionEventType|ShapeType|BoundsCheck|LocationProp|GunShipState|UnitProp|SimProp|DecalProp|PlayerProp|ArmorType|ForceProp|TerrainType|SecondaryTerrainTypeNormal|Unicode|ColorType|Expr|DynValType|BinaryOp|UnaryOp)\\b"
+          "match": "\\b(Race|DeathCause|EffectType|AttackType|VictoryStatus|SpecialPlayer|SpecialForce|CommandType|EventType|ExplosionEventType|ShapeType|BoundsCheck|LocationProp|GunShipState|UnitProp|SimProp|DecalProp|PlayerProp|ArmorType|ForceProp|TerrainType|SecondaryTerrainTypeNormal|Unicode|ColorType|Expr|DynValType|BinaryOp|UnaryOp|BuildStructureItemTable|BuildItemTable|BuildItemType)\\b"
         }
       ]
     },
