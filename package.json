@@ -1,8 +1,8 @@
 {
     "name": "driftscript-language",
-     "displayName": "DriftScript",
+    "displayName": "DriftScript",
     "description": "DriftScript language support.. The official scripting language of Drift Wars!",
-    "version": "0.0.26",
+    "version": "0.0.27",
     "license": "MIT",
     "icon": "images/icon.png",
     "publisher": "BRZDRIFT",
@@ -15,33 +15,36 @@
     },
     "categories": ["Programming Languages"],
     "main": "./src/extension.js",
-    "activationEvents": [
-        "onLanguage:driftscript"
-    ],
     "contributes": {
-        "languages": [{
-            "id": "driftscript",
-            "aliases": ["DriftScript", "driftscript"],
-            "extensions": [".DriftScript"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "driftscript",
-            "scopeName": "source.driftscript",
-            "path": "./syntaxes/driftscript.tmLanguage.json"
-        }],
-        "viewsContainers": {
-            "activitybar": [{
+        "languages": [
+            {
                 "id": "driftscript",
-                "title": "DriftScript",
-                "icon": "images/icon2.png"
-            }]
-        },
-        "views": {
-            "driftscript": [{
-                "id": "driftscript.docsView",
-                "name": "Options"
-            }]
+                "aliases": ["DriftScript", "driftscript"],
+                "extensions": [".DriftScript"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "driftscript",
+                "scopeName": "source.driftscript",
+                "path": "./syntaxes/driftscript.tmLanguage.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "driftscript.openInDriftDocs",
+                "title": "Open in DriftDocs"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "driftscript.openInDriftDocs",
+                    "when": "resourceLangId == driftscript",
+                    "group": "navigation"
+                }
+            ]
         }
     }
 }

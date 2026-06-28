@@ -27,6 +27,11 @@ function AnalyzeDoc(document)
         ParseAndGetSymbols(document.uri.toString(), document.getText()));
 }
 
+function IsOfficialUri(uri)
+{
+    return g_officialFile.has(uri);
+}
+
 function OnDocClosed(document)
 {
     if (g_officialFile.has(document.uri.toString()))
@@ -291,7 +296,6 @@ function GetFunctionOrClassSymbol(namespace, name)
 function GetNonEnumMemberByName(namespace, name, doc)
 {
     let uriStr = doc.uri.toString();
-
     const IsValid = (s) => {
         if (s.kind == "variable")
         {
@@ -316,7 +320,7 @@ function GetNonEnumMemberByName(namespace, name, doc)
     {
         return symbols[0];
     }
-
+    
     return null;
 }
 
@@ -598,6 +602,29 @@ class DriftScriptProvideCompletionItems
     }
 }
 
+function GetBestSymbol(doc, theText)
+{
+    let theNamespace = GetNamespace(theText);
+    let enumName = GetEnumName(theText);
+    let finalChunkName = GetFinalChunkName(theText); 
+
+    if (enumName !== null) {
+        if (finalChunkName == "") {
+            finalChunkName = enumName;
+            enumName = null;
+        }
+    }
+
+    let match = null;
+    if (enumName !== null) {
+        match = GetEnumMemberSymbol(theNamespace, enumName, finalChunkName);
+    } else {
+        match = GetNonEnumMemberByName(theNamespace, finalChunkName, doc);
+    }
+
+    return match;
+}
+
 class DriftScriptHoverHelper
 {
     getRangeUpToHover(document, range, position)
@@ -642,33 +669,9 @@ class DriftScriptHoverHelper
         }
 
         range = this.getRangeUpToHover(document, range, position);
-
         let theText = document.getText(range);
-        let offset = position.character - range.start.character;
 
-        let match = null;
-
-        let theNamespace = GetNamespace(theText);
-        let enumName = GetEnumName(theText);
-        let finalChunkName = GetFinalChunkName(theText); 
-
-        if (enumName !== null)
-        {
-            if (finalChunkName == "")
-            {
-                finalChunkName = enumName;
-                enumName = null;
-            }
-        }
-
-        if (enumName !== null)
-        {
-            match = GetEnumMemberSymbol(theNamespace, enumName, finalChunkName);
-        }
-        else
-        {
-            match = GetNonEnumMemberByName(theNamespace, finalChunkName, document);
-        }
+        let match = GetBestSymbol(document, theText);
 
         if (match === null)
         {
@@ -824,33 +827,6 @@ class DriftScriptSignatureHelpProvider
     }
 }
 
-class DocItem extends vscode.TreeItem {
-    constructor(label, url) {
-        super(label, vscode.TreeItemCollapsibleState.None);
-
-        this.command = {
-            command: "driftscript.openDocs",
-            title: "Open Documentation",
-            arguments: [url]
-        };
-    }
-}
-
-class DocsProvider {
-    getTreeItem(element) {
-        return element;
-    }
-
-    getChildren() {
-        return [
-            new DocItem(
-                "Open DriftDocs",
-                "https://brzdrift.github.io/DriftDocs/driftScript/functions/"
-            )
-        ];
-    }
-}
-
 async function activate(context)
 {
     Log("Loading..");
@@ -906,18 +882,54 @@ async function activate(context)
             new DriftScriptHoverHelper()
         )
     );
-        
-    vscode.commands.registerCommand(
-        "driftscript.openDocs",
-        (url) => {
-            vscode.env.openExternal(vscode.Uri.parse(url));
-        }
-    );
 
-    vscode.window.registerTreeDataProvider(
-        "driftscript.docsView",
-        new DocsProvider()
-    );
+    const openInDriftDocsFn = vscode.commands.registerCommand('driftscript.openInDriftDocs', () => {
+        function OnFailFn()
+        {
+            let url = 'https://brzdrift.github.io/DriftDocs/driftScript/intro/';
+            vscode.env.openExternal(url);
+        }
+
+        const editor = vscode.window.activeTextEditor;
+        if (!editor)
+        {
+            OnFailFn();
+            return;
+        }
+
+        const wordRange = editor.document.getWordRangeAtPosition(editor.selection.active, /[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*/);
+        if (!wordRange)
+        {
+            OnFailFn();
+            return;
+        }
+
+        const word = editor.document.getText(wordRange);
+        let symbol = GetBestSymbol(editor.document, word);
+        let url = 'https://brzdrift.github.io/DriftDocs/driftScript/intro/';
+        if (symbol != null)
+        {
+            if (IsOfficialUri(symbol.uri))
+            {
+                if (symbol.kind == 'enum')
+                {
+                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/enumerations/' + '#' + symbol.name;
+                }
+                else if (symbol.kind == 'enumMember')
+                {
+                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/enumerations/' + '#' + symbol.enum;
+                }
+                else if (symbol.kind == 'function')
+                {
+                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/functions/' + '#' + symbol.name;
+                }
+            }
+        }
+        vscode.env.openExternal(url);
+    });
+
+    context.subscriptions.push(openDriftDocsFn);
+    context.subscriptions.push(openInDriftDocsFn);
 
     Log("Loading.. Completed.");
 }
