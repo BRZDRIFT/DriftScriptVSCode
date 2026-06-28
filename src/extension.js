@@ -928,7 +928,6 @@ async function activate(context)
         vscode.env.openExternal(url);
     });
 
-    context.subscriptions.push(openDriftDocsFn);
     context.subscriptions.push(openInDriftDocsFn);
 
     Log("Loading.. Completed.");
