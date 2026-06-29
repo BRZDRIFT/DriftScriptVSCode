@@ -137,7 +137,7 @@ function InitKeywordSymbols()
         'if', 'else', 'while', 'do', 'for', 'foreach', 'in', 'switch', 'case',
         'default', 'break', 'continue', 'return', 'try', 'catch', 'throw',
         'yield', 'resume', 'static', 'typeof', 'instanceof',
-        'delete', 'clone', 'null', 'true', 'false', 'not_in', 'is_not'
+        'delete', 'clone', 'null', 'true', 'false', 'not_in', 'is_not', 'is'
     ];
 
     for (const keyword of driftscript_keywords)
@@ -148,6 +148,41 @@ function InitKeywordSymbols()
             d += (line + '\n');
         }
 
+        if (keyword == 'delete')
+        {
+            addLine('local myTable = { someKey = 7 };');
+            addLine('print("someKey" in myTable); # true');
+            addLine('delete myTable["someKey"]');
+            addLine('print("someKey" in myTable); # false');
+        }
+        if (keyword == 'in')
+        {
+            addLine('local myTable = { someKey = 7 };');
+            addLine('print("someKey" in myTable); # true');
+            addLine('print("someOtherKey" in myTable); # false');
+        }
+        if (keyword == 'not_in')
+        {
+            addLine('local myTable = { someKey = 7 };');
+            addLine('print("someKey" not_in myTable); # false');
+            addLine('print("someOtherKey" not_in myTable); # true');
+        }
+        if (keyword == 'is')
+        {
+            addLine('local a = Vec2(0, 1);');
+            addLine('local b = Vec2(0, 1);');
+            addLine('local c = a;');
+            addLine('print(a is b); # false');
+            addLine('print(a is c); # true');
+        }
+        if (keyword == 'is_not')
+        {
+            addLine('local a = Vec2(0, 1);');
+            addLine('local b = Vec2(0, 1);');
+            addLine('local c = a;');
+            addLine('print(a is_not b); # true');
+            addLine('print(a is_not c); # false');
+        }
         if (keyword == 'class')
         {
             addLine('class MyClass {');
@@ -194,7 +229,7 @@ function InitKeywordSymbols()
         if (keyword == 'instanceof')
         {
             addLine('local b = Vec2(0, 4);');
-            addLine('print(b instanceof Vec2); # prints true');
+            addLine('print(b instanceof Vec2); # true');
         }
         if (keyword == 'function')
         {
