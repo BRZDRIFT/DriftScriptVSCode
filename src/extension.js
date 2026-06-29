@@ -884,10 +884,17 @@ async function activate(context)
     );
 
     const openInDriftDocsFn = vscode.commands.registerCommand('driftscript.openInDriftDocs', () => {
+
+        const DOCS_URL = "https://brzdrift.github.io/DriftDocs";
+
+        function GoToUrl(url) {
+            vscode.env.openExternal(url);
+        }
+
         function OnFailFn()
         {
-            let url = 'https://brzdrift.github.io/DriftDocs/driftScript/intro/';
-            vscode.env.openExternal(url);
+            let url = DOCS_URL + '/driftScript/intro/';
+            GoToUrl(url);
         }
 
         const editor = vscode.window.activeTextEditor;
@@ -905,23 +912,35 @@ async function activate(context)
         }
 
         const word = editor.document.getText(wordRange);
+
+        if (word == 'gx_sim_update') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_sim_update');
+            return;
+        } else if (word == 'gx_sim_init') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_sim_init');
+            return;
+        } else if (word == 'gx_map_init') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_map_init');
+            return;
+        }
+
         let symbol = GetBestSymbol(editor.document, word);
-        let url = 'https://brzdrift.github.io/DriftDocs/driftScript/intro/';
+        let url = DOCS_URL + '/driftScript/intro/';
         if (symbol != null)
         {
             if (IsOfficialUri(symbol.uri))
             {
                 if (symbol.kind == 'enum')
                 {
-                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/enumerations/' + '#' + symbol.name;
+                    url = DOCS_URL + '/driftScript/enumerations/' + '#' + symbol.name.toLowerCase();
                 }
                 else if (symbol.kind == 'enumMember')
                 {
-                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/enumerations/' + '#' + symbol.enum;
+                    url = DOCS_URL + '/driftScript/enumerations/' + '#' + symbol.enum.toLowerCase();
                 }
                 else if (symbol.kind == 'function')
                 {
-                    url = 'https://brzdrift.github.io/DriftDocs/driftScript/functions/' + '#' + symbol.name;
+                    url = DOCS_URL + '/driftScript/functions/' + '#' + symbol.name.toLowerCase();
                 }
             }
         }
