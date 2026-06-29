@@ -136,7 +136,7 @@ function InitKeywordSymbols()
         'function', 'local', 'class', 'extends', 'enum', 'constructor', 'base', 'this',
         'if', 'else', 'while', 'do', 'for', 'foreach', 'in', 'switch', 'case',
         'default', 'break', 'continue', 'return', 'try', 'catch', 'throw',
-        'yield', 'resume', 'static', 'const', 'typeof', 'instanceof',
+        'yield', 'resume', 'static', 'typeof', 'instanceof',
         'delete', 'clone', 'null', 'true', 'false', 'not_in', 'is_not'
     ];
 
@@ -148,6 +148,54 @@ function InitKeywordSymbols()
             d += (line + '\n');
         }
 
+        if (keyword == 'class')
+        {
+            addLine('class MyClass {');
+            addLine('  myMember = 3');
+            addLine('  constructor(someVal = 0) {');
+            addLine('    myMember = someVal;');
+            addLine('  }');
+            addLine('  function myFunction() {');
+            addLine('    return myMember;');
+            addLine('  }');
+            addLine('};');
+        }
+        if (keyword == 'switch')
+        {
+            let text = 
+                'switch(3){\n'                      +
+                '  case 2:\n'                       +
+                '    print("not printed");\n'       +
+                '    break;\n'                      +
+                '  case 3: {\n'                      +
+                '    print("This gets printed");\n' +
+                '    break;\n'                      +
+                '  }\n'                             +
+                '  default:\n'                      +
+                '    break;\n'                      +
+                '};';
+            addLine(text);
+        }
+        if (keyword == 'clone')
+        {
+            addLine('local a = Vec2(3, 4);');
+            addLine('local b = clone a;');
+        }
+        if (keyword == 'enum')
+        {
+            addLine('enum Pet {');
+            addLine('  Invalid = 0,');
+            addLine('  Dog,');
+            addLine('  Cat');
+            addLine('};');
+            addLine('');
+            addLine('print(Pet.Dog) # prints "1"');
+        }
+        if (keyword == 'instanceof')
+        {
+            addLine('local b = Vec2(0, 4);');
+            addLine('print(b instanceof Vec2); # prints true');
+        }
         if (keyword == 'function')
         {
             addLine('function myFunction(a, b) {');
