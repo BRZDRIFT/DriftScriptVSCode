@@ -149,7 +149,7 @@
         },
         {
           "name": "support.type.vector.driftscript",
-          "match": "\\b(Race|DeathCause|EffectType|AttackType|VictoryStatus|SpecialPlayer|SpecialForce|CommandType|EventType|ExplosionEventType|ShapeType|BoundsCheck|LocationProp|GunShipState|UnitProp|SimProp|DecalProp|PlayerProp|ArmorType|ForceProp|UdProp|TerrainType|SecondaryTerrainTypeNormal|Unicode|ColorType|Expr|DynValType|BinaryOp|UnaryOp|BuildStructureItemTable|BuildItemTable|BuildItemType|enum_val)\\b"
+          "match": "\\b(Race|DeathCause|EffectType|AttackType|VictoryStatus|SpecialPlayer|SpecialForce|CommandType|EventType|ExplosionEventType|ShapeType|BoundsCheck|LocationProp|GunShipState|UnitProp|SimProp|DecalProp|PlayerProp|ArmorType|ForceProp|UdProp|TerrainType|SecondaryTerrainTypeNormal|Unicode|ColorType|Expr|DynValType|BinaryOp|UnaryOp|BuildStructureItemTable|BuildItemTable|BuildItemType|enum_val|AuraTable)\\b"
         }
       ]
     },
