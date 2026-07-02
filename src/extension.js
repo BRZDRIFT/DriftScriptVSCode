@@ -996,14 +996,14 @@ async function activate(context)
 
         const word = editor.document.getText(wordRange);
 
-        if (word == 'gx_sim_update') {
-            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_sim_update');
+        if (word == 'dw_sim_update') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#dw_sim_update');
             return;
-        } else if (word == 'gx_sim_init') {
-            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_sim_init');
+        } else if (word == 'dw_sim_init') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#dw_sim_init');
             return;
-        } else if (word == 'gx_map_init') {
-            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#gx_map_init');
+        } else if (word == 'dw_map_init') {
+            GoToUrl(DOCS_URL + '/driftScript/scriptEntryPoints/#dw_map_init');
             return;
         }
 
