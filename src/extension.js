@@ -86,7 +86,7 @@ async function InitDriftLibs()
 {
     const dirsToCheck = [];
 
-    const driftDir = process.env["GX_DRIFT_LIBS_DIR"];
+    const driftDir = process.env["DW_DRIFT_LIBS_DIR"];
     if (driftDir)
     {
         dirsToCheck.push(driftDir);
