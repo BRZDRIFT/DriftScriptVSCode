@@ -246,7 +246,7 @@ function InitKeywordSymbols()
         if (keyword == 'foreach')
         {
             addLine('foreach (v in arrayOrTable) {');
-            addLine('  print("value = " + val);');
+            addLine('  print("value/key = " + val);');
             addLine('}');
             addLine('');
             addLine('foreach (k, v in arrayOrTable) {');
@@ -311,6 +311,7 @@ function InitKeywordSymbols()
     addConst('FLOAT_SMALLEST', '`0.00000000023283064365...`');
     addConst('PI', 'Constant float value for `PI` (`3.14159...`)');
     addConst('TAU', 'Constant float value for `2*PI` (`6.28318...`)');
+    addConst('TICKS_PER_SECOND', 'ticks per second (`20`)');
 
     addConst('__LINE__', 'int: the line number');
     addConst('__FILE__', 'string: the file name');
